@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>OrGestion Pro - Dashboard XL</title>
+
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2489/2489756.png">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2489/2489756.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        :root { --bg: #050a15; --gold: #eab308; }
+        body { 
+            background-color: var(--bg);
+            background: radial-gradient(circle at 50% 0%, #1e293b 0%, #050a15 100%);
+            margin: 0; padding: 0; min-height: 100vh;
+            display: flex; justify-content: center; align-items: flex-start;
+            overflow-x: hidden; font-family: 'Inter', sans-serif;
+        }
+        .main-layout { width: 100%; max-width: 1400px; z-index: 1; padding: 30px; }
+        .glass-card { 
+            background: rgba(255, 255, 255, 0.03); 
+            backdrop-filter: blur(25px); 
+            border: 1px solid rgba(255,255,255,0.1); 
+            box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+        }
+        #journal-container { max-height: calc(100vh - 150px); overflow-y: auto; padding-right: 10px; }
+        #journal-container::-webkit-scrollbar { width: 6px; }
+        #journal-container::-webkit-scrollbar-thumb { background: rgba(234, 179, 8, 0.3); border-radius: 10px; }
+        
+        .swal2-popup {
+            background: rgba(15, 23, 42, 0.95) !important;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(234, 179, 8, 0.2) !important;
+            border-radius: 2rem !important;
+            color: #fff !important;
+        }
+    </style>
+</head>
+<body class="text-slate-100">
+
+    <div class="main-layout">
+        <header class="flex justify-between items-center mb-12 px-6">
+            <div class="flex items-center gap-6">
+                <div class="h-20 w-20 bg-yellow-500 rounded-[1.5rem] flex items-center justify-center font-black text-black text-4xl shadow-2xl shadow-yellow-500/30">O</div>
+                <div>
+                    <h1 class="text-4xl font-black uppercase italic tracking-tighter">OrGestion <span class="text-yellow-500">PRO</span></h1>
+                    <p class="text-sm text-slate-500 font-bold uppercase tracking-[0.3em]">Gestionnaire de Flux d'Or v9.0</p>
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="confirmClearHistory()" class="bg-red-500/10 text-red-500 px-6 py-3 rounded-2xl border border-red-500/20 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all">Effacer Historique</button>
+                <div class="bg-emerald-500/10 px-6 py-3 rounded-2xl border border-emerald-500/20 flex items-center gap-4">
+                    <p class="text-xs font-black text-emerald-400 uppercase tracking-widest">Connecté</p>
+                    <div class="h-4 w-4 rounded-full bg-emerald-500 animate-pulse"></div>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+            <div class="lg:col-span-5 space-y-10">
+                <div class="glass-card rounded-[4rem] p-14 text-center relative overflow-hidden border-t border-white/10">
+                    <p class="text-sm font-black text-blue-400 uppercase tracking-[0.5em] mb-6">Capital Disponible</p>
+                    <div class="text-7xl lg:text-8xl font-black tracking-tighter mb-8 text-white" id="capitalRestant">0 GNF</div>
+                    <div class="grid grid-cols-2 gap-8 mt-10 pt-10 border-t border-white/5">
+                        <div>
+                            <p class="text-xs uppercase font-bold opacity-30 tracking-[0.2em] mb-2">Stock Physique</p>
+                            <div class="text-4xl font-black text-yellow-500"><span id="totalPoids">0</span>g</div>
+                        </div>
+                        <div class="border-l border-white/10">
+                            <p class="text-xs uppercase font-bold opacity-30 tracking-[0.2em] mb-2">Investi Total</p>
+                            <div class="text-4xl font-black text-white" id="totalInvesti">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-[3.5rem] p-12 space-y-8">
+                    <div class="grid grid-cols-2 gap-8">
+                        <div class="space-y-3">
+                            <label class="text-xs font-black uppercase opacity-50 ml-6 tracking-widest text-yellow-500">Poids (Grammes)</label>
+                            <input type="number" id="poids" placeholder="0.00" class="w-full bg-white/5 p-10 rounded-[2.5rem] border-2 border-white/5 outline-none focus:border-yellow-500/50 font-black text-center text-5xl transition-all text-white">
+                        </div>
+                        <div class="space-y-3">
+                            <label class="text-xs font-black uppercase opacity-50 ml-6 tracking-widest text-yellow-500">Prix unitaire</label>
+                            <input type="number" id="prix" placeholder="0" class="w-full bg-white/5 p-10 rounded-[2.5rem] border-2 border-white/5 outline-none focus:border-yellow-500/50 font-black text-center text-5xl transition-all text-white">
+                        </div>
+                    </div>
+                    <button onclick="saveToCloud()" class="w-full py-10 bg-yellow-500 text-black rounded-[2.5rem] font-black text-2xl uppercase shadow-2xl shadow-yellow-500/40 active:scale-95 hover:bg-yellow-400 transition-all">Enregistrer au Cloud</button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6">
+                    <button onclick="shareData()" class="glass-card py-7 rounded-[2rem] text-blue-400 font-black text-sm uppercase tracking-[0.2em] flex items-center justify-center gap-4 hover:bg-blue-500/10"><span>📱 Partager</span></button>
+                    <button onclick="generateGlobalPDF()" class="glass-card py-7 rounded-[2rem] text-slate-400 font-black text-sm uppercase tracking-[0.2em] flex items-center justify-center gap-4 hover:bg-white/5"><span>📄 Bilan Global</span></button>
+                </div>
+            </div>
+
+            <div class="lg:col-span-7 space-y-8">
+                <div class="glass-card rounded-[2.5rem] p-10 flex items-center gap-8">
+                    <div class="flex-1">
+                        <p class="text-xs font-black opacity-30 uppercase ml-4 mb-2 tracking-widest">Budget Initial</p>
+                        <input type="number" id="capitalDepart" placeholder="Définir capital..." class="w-full bg-transparent p-3 text-4xl font-black outline-none border-b-4 border-white/5 focus:border-yellow-500/50 text-yellow-500">
+                    </div>
+                    <button onclick="setCapital()" class="bg-white text-black px-12 py-6 rounded-3xl font-black text-sm uppercase hover:bg-slate-200 shadow-xl">Mettre à jour</button>
+                </div>
+
+                <div id="journal-container">
+                    <div id="journal" class="space-y-6"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBehXJCKBiigdB9FKr44RnRA4TpNgd8vPU",
+            authDomain: "orgestion.firebaseapp.com",
+            databaseURL: "https://orgestion-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "orgestion",
+            storageBucket: "orgestion.firebasestorage.app",
+            messagingSenderId: "235790975064",
+            appId: "1:235790975064:web:a305690bc58232ae250a2d"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        function formatGNF(num) {
+            return new Intl.NumberFormat('fr-FR').format(num).replace(/\u00a0/g, ' ') + " GNF";
+        }
+
+        Swal.fire({
+            title: 'OrGestion Pro Live',
+            text: 'Synchronisation Cloud établie.',
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end'
+        });
+
+        function setCapital() {
+            const cap = parseFloat(document.getElementById('capitalDepart').value);
+            if(cap) {
+                db.ref('config').set({ capitalInitial: cap });
+                Swal.fire({ title: 'Budget mis à jour', icon: 'success', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
+            }
+        }
+
+        function saveToCloud() {
+            const p = parseFloat(document.getElementById('poids').value);
+            const pr = parseFloat(document.getElementById('prix').value);
+            if(!p || !pr) return Swal.fire({ title: 'Erreur', text: 'Remplissez poids et prix !', icon: 'error' });
+            
+            db.ref('achats').push({
+                poids: p, prix: pr, total: p * pr,
+                date: new Date().toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+                timestamp: Date.now()
+            });
+            document.getElementById('poids').value = '';
+            document.getElementById('prix').value = '';
+        }
+
+        function confirmClearHistory() {
+            Swal.fire({
+                title: 'Vider l\'historique ?',
+                text: "Cette action supprimera toutes les transactions du Cloud !",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#eab308',
+                cancelButtonColor: '#1e293b',
+                confirmButtonText: 'Oui, effacer tout',
+                cancelButtonText: 'Annuler'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    db.ref('achats').remove();
+                    Swal.fire('Effacé !', 'L\'historique a été réinitialisé.', 'success');
+                }
+            });
+        }
+
+        let capitalInitial = 0;
+        db.ref('config/capitalInitial').on('value', (snap) => {
+            capitalInitial = snap.val() || 0;
+            document.getElementById('capitalDepart').value = capitalInitial;
+            if(window.lastData) refreshDisplay();
+        });
+
+        db.ref('achats').on('value', (snapshot) => {
+            window.lastData = snapshot.val();
+            refreshDisplay();
+        });
+
+        function refreshDisplay() {
+            const data = window.lastData;
+            const container = document.getElementById('journal');
+            let tP = 0, tV = 0;
+            let html = '';
+            if (data) {
+                Object.keys(data).reverse().forEach(key => {
+                    const t = data[key];
+                    tP += t.poids; tV += t.total;
+                    html += `
+                        <div class="glass-card p-10 rounded-[3rem] flex justify-between items-center border-l-[12px] border-l-yellow-500/30">
+                            <div class="flex items-center gap-8">
+                                <div class="h-20 w-20 rounded-[1.5rem] bg-yellow-500/10 flex items-center justify-center text-yellow-500 font-black text-xl">AU</div>
+                                <div>
+                                    <span class="font-black text-4xl text-white">${t.poids}g</span>
+                                    <p class="text-xs opacity-30 font-bold uppercase tracking-widest mt-2">${t.date}</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end gap-4">
+                                <div class="text-right">
+                                    <div class="font-black text-3xl text-slate-100">${formatGNF(t.total)}</div>
+                                </div>
+                                <button onclick="generateSinglePDF('${key}')" class="text-[10px] font-black uppercase text-yellow-500/50 hover:text-yellow-500 transition-colors border border-yellow-500/20 px-4 py-2 rounded-xl italic">Générer Reçu Pro</button>
+                            </div>
+                        </div>`;
+                });
+                document.getElementById('totalPoids').innerText = tP.toFixed(2);
+                document.getElementById('totalInvesti').innerText = formatGNF(tV);
+                const restant = capitalInitial - tV;
+                const elRestant = document.getElementById('capitalRestant');
+                elRestant.innerText = formatGNF(restant);
+                elRestant.style.color = restant < 0 ? "#fb7185" : "#34d399";
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<p class="text-center opacity-20 font-black uppercase py-20">Aucune transaction</p>';
+                document.getElementById('totalPoids').innerText = "0";
+                document.getElementById('totalInvesti').innerText = "0 GNF";
+                document.getElementById('capitalRestant').innerText = formatGNF(capitalInitial);
+            }
+        }
+
+        function generateSinglePDF(key) {
+            const t = window.lastData[key];
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            const f = (n) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+
+            doc.setFillColor(5, 10, 21);
+            doc.rect(0, 0, 210, 297, 'F');
+
+            doc.setFillColor(234, 179, 8);
+            doc.rect(0, 0, 3, 297, 'F');
+
+            doc.setTextColor(234, 179, 8);
+            doc.setFontSize(28);
+            doc.setFont("helvetica", "bold");
+            doc.text("ORGESTION PRO", 20, 35);
+            
+            doc.setTextColor(148, 163, 184);
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "normal");
+            doc.text("SYSTEME DE CERTIFICATION CLOUD V9.0", 20, 42);
+
+            doc.setDrawColor(255, 255, 255, 0.1);
+            doc.line(20, 55, 190, 55);
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(14);
+            doc.text("REÇU DE TRANSACTION", 20, 75);
+            
+            doc.setTextColor(148, 163, 184);
+            doc.setFontSize(10);
+            doc.text(`DATE : ${t.date}`, 20, 85);
+            doc.text(`REF ID : #OR-${Date.now().toString().slice(-6)}`, 20, 92);
+
+            doc.setFillColor(255, 255, 255, 0.02);
+            doc.roundedRect(15, 110, 180, 50, 3, 3, 'F');
+
+            doc.setTextColor(234, 179, 8);
+            doc.setFontSize(11);
+            doc.text("ARTICLE", 25, 125);
+            doc.text("QUANTITÉ", 90, 125);
+            doc.text("PRIX UNITAIRE", 145, 125);
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(13);
+            doc.text("Or Pur", 25, 140); // Modification : retrait du (24k)
+            doc.text(`${t.poids} g`, 90, 140);
+            doc.text(`${f(t.prix)} GNF`, 145, 140);
+
+            doc.setFillColor(234, 179, 8, 0.08);
+            doc.roundedRect(15, 170, 180, 45, 5, 5, 'F');
+            
+            doc.setTextColor(234, 179, 8);
+            doc.setFontSize(14);
+            doc.text("MONTANT TOTAL RÉGLÉ", 25, 185);
+            
+            doc.setFontSize(32);
+            doc.setFont("helvetica", "bold");
+            doc.text(`${f(t.total)} GNF`, 25, 203);
+
+            doc.setFontSize(8);
+            doc.setTextColor(71, 85, 105);
+            doc.text("Ce document est une preuve d'achat numérique générée par OrGestion Pro.", 105, 275, {align: "center"});
+            doc.text("Authenticité vérifiée via base de données Firebase Cloud.", 105, 282, {align: "center"});
+
+            doc.setDrawColor(52, 211, 153);
+            doc.setLineWidth(0.5);
+            doc.roundedRect(165, 230, 25, 12, 2, 2, 'D');
+            doc.setTextColor(52, 211, 153);
+            doc.setFontSize(7);
+            doc.text("CERTIFIÉ", 177.5, 237.5, {align: "center"});
+
+            doc.save(`Recu_Or_${t.date.replace(/ /g, '_')}.pdf`);
+        }
+
+        function generateGlobalPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const f = (n) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+
+            doc.setFillColor(5, 10, 21); doc.rect(0, 0, 210, 297, 'F');
+            doc.setTextColor(255, 255, 255); doc.setFontSize(26);
+            doc.text("BILAN GLOBAL ORGESTION PRO", 20, 30);
+            doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 50);
+            doc.text(`Stock Total: ${document.getElementById('totalPoids').innerText} g`, 20, 70);
+            doc.text(`Investi: ${document.getElementById('totalInvesti').innerText}`, 20, 85);
+            doc.setTextColor(52, 211, 153);
+            doc.text(`SOLDE: ${document.getElementById('capitalRestant').innerText}`, 20, 105);
+            doc.save("Bilan_Complet.pdf");
+        }
+
+        function shareData() {
+            const r = document.getElementById('capitalRestant').innerText;
+            const p = document.getElementById('totalPoids').innerText;
+            const text = `🏆 *BILAN ORGESTION PRO*\n━━━━━━━━━━━━━\n⭐ Stock Or: ${p}g\n💰 Capital Solde: ${r}\n━━━━━━━━━━━━━`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+        }
+    </script>
+</body>
+</html>
