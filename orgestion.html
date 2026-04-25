@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OrGestion Pro - ArtisansGN</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/300/gold-bars.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        .modal-active { display: flex !important; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.3); border-radius: 10px; }
+        body { touch-action: manipulation; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 to-blue-950 min-h-screen p-4 sm:p-8 font-sans text-white pb-20">
+
+    <div class="max-w-2xl mx-auto space-y-6">
+        <div class="bg-white/10 backdrop-blur-md border border-white/10 p-6 rounded-[2rem] flex justify-between items-center shadow-2xl">
+            <h1 class="text-2xl font-black tracking-tighter text-yellow-500">OrGestion <span class="text-white font-light text-sm italic block">v2.1 Stock</span></h1>
+            <div id="dateDuJour" class="text-right text-xs font-bold text-blue-300 uppercase tracking-widest"></div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div class="bg-yellow-600/20 border border-yellow-500/30 p-4 rounded-3xl text-center">
+                <p class="text-[10px] font-black text-yellow-500 uppercase mb-1">Stock Total</p>
+                <div class="text-2xl font-black text-white"><span id="totalPoidsStock">0</span> g</div>
+            </div>
+            <div class="bg-blue-600/20 border border-blue-500/30 p-4 rounded-3xl text-center">
+                <p class="text-[10px] font-black text-blue-300 uppercase mb-1">Total Investi</p>
+                <div class="text-xl font-black text-white"><span id="totalValeurStock">0</span></div>
+            </div>
+        </div>
+
+        <div class="bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-[2.5rem] shadow-2xl">
+            <div class="space-y-6">
+                <div class="bg-blue-600/20 rounded-3xl p-5 border border-blue-400/20">
+                    <label class="text-[10px] font-black text-blue-300 uppercase block mb-2">Fonds (GNF)</label>
+                    <input type="number" id="capital" value="20000000" oninput="calculerTotal()" class="bg-transparent text-3xl font-black w-full outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-white/40 uppercase ml-2">Poids (g)</label>
+                        <input type="number" id="poids" oninput="calculerTotal()" placeholder="0.00" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-lg font-bold outline-none focus:border-yellow-500/50">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-white/40 uppercase ml-2">Prix / g</label>
+                        <input type="number" id="prixGramme" oninput="calculerTotal()" placeholder="0" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-lg font-bold outline-none focus:border-yellow-500/50">
+                    </div>
+                </div>
+
+                <div class="bg-black/40 rounded-3xl p-5 border border-white/5 flex justify-between items-center shadow-inner">
+                    <span class="text-xs font-bold text-gray-500 uppercase">Reste</span>
+                    <span id="restePoche" class="text-emerald-400 font-black text-xl font-mono">20 000 000 GNF</span>
+                </div>
+
+                <button onclick="enregistrerAchat()" class="w-full py-5 bg-gradient-to-r from-yellow-600 to-yellow-400 text-black rounded-2xl font-black text-lg shadow-xl shadow-yellow-600/20 hover:scale-[1.01] active:scale-95 transition-all">
+                    ENREGISTRER L'ACHAT
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 shadow-xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-black text-lg uppercase text-gray-400 italic">Journal</h3>
+                <button onclick="toggleModal(true)" class="text-[10px] font-bold text-red-400/60 uppercase bg-red-500/10 px-3 py-1 rounded-full">Vider</button>
+            </div>
+            <div id="historiqueListe" class="space-y-3 max-h-[350px] overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <div id="confirmModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-white/10 p-8 rounded-[2rem] max-w-sm w-full text-center shadow-2xl">
+            <div class="text-4xl mb-4">⚠️</div>
+            <h4 class="text-xl font-bold mb-2">Réinitialiser ?</h4>
+            <p class="text-gray-400 text-sm mb-8">Journal et stock seront effacés.</p>
+            <div class="flex gap-4">
+                <button onclick="toggleModal(false)" class="flex-1 py-3 bg-white/5 rounded-xl font-bold text-white">Annuler</button>
+                <button onclick="clearHistory()" class="flex-1 py-3 bg-red-500 rounded-xl font-bold text-white">Confirmer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Enregistrement du Service Worker pour la PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+
+        let achats = JSON.parse(localStorage.getItem('achatsOr')) || [];
+        document.getElementById('dateDuJour').innerText = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+        function formatArgent(n) { return new Intl.NumberFormat('fr-FR').format(n).replace(/\u202f|\u00a0/g, ' '); }
+
+        function calculerTotal() {
+            const p = parseFloat(document.getElementById('poids').value) || 0;
+            const pr = parseFloat(document.getElementById('prixGramme').value) || 0;
+            const cap = parseFloat(document.getElementById('capital').value) || 0;
+            document.getElementById('restePoche').innerText = formatArgent(cap - (p * pr)) + " GNF";
+        }
+
+        function toggleModal(show) { document.getElementById('confirmModal').classList.toggle('modal-active', show); }
+
+        function enregistrerAchat() {
+            const p = document.getElementById('poids').value;
+            const pr = document.getElementById('prixGramme').value;
+            const cap = document.getElementById('capital').value;
+            if (!p || !pr) return;
+
+            const a = { id: Date.now(), poids: parseFloat(p), prix: parseFloat(pr), total: p * pr, capital: cap, date: new Date().toLocaleString('fr-FR') };
+            achats.unshift(a);
+            localStorage.setItem('achatsOr', JSON.stringify(achats));
+            document.getElementById('poids').value = '';
+            document.getElementById('prixGramme').value = '';
+            renderHistorique();
+            calculerTotal();
+        }
+
+        function renderHistorique() {
+            const container = document.getElementById('historiqueListe');
+            let tP = 0; let tV = 0;
+            
+            if (achats.length === 0) {
+                container.innerHTML = '<p class="text-center text-white/20 py-10 italic">Aucun achat en stock.</p>';
+                document.getElementById('totalPoidsStock').innerText = "0";
+                document.getElementById('totalValeurStock').innerText = "0 GNF";
+                return;
+            }
+
+            container.innerHTML = achats.map(a => {
+                tP += a.poids; tV += a.total;
+                return `
+                <div onclick="genererPDF(${a.id})" class="bg-white/5 p-4 rounded-2xl flex justify-between items-center border border-white/5 active:bg-yellow-500 active:text-black mb-2 shadow-lg">
+                    <div><div class="font-black">${a.poids} g</div><div class="text-[10px] opacity-40">${a.date}</div></div>
+                    <div class="text-right"><div class="font-bold">${formatArgent(a.total)} GNF</div><div class="text-[10px] text-yellow-500 font-bold uppercase">Recu PDF</div></div>
+                </div>`;
+            }).join('');
+
+            document.getElementById('totalPoidsStock').innerText = tP.toFixed(2);
+            document.getElementById('totalValeurStock').innerText = formatArgent(tV) + " GNF";
+        }
+
+        function clearHistory() { achats = []; localStorage.removeItem('achatsOr'); renderHistorique(); toggleModal(false); }
+
+        function genererPDF(id) {
+            const a = achats.find(x => x.id === id);
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(22); doc.text("FACTURE D'ACHAT OR", 20, 20);
+            doc.setFontSize(12); doc.text(`Date: ${a.date}`, 20, 35);
+            doc.text(`Quantite: ${a.poids} g`, 20, 50);
+            doc.text(`Prix/g: ${formatArgent(a.prix)} GNF`, 20, 60);
+            doc.setFontSize(16); doc.text(`TOTAL PAYE: ${formatArgent(a.total)} GNF`, 20, 80);
+            doc.save(`Recu_Or_${id}.pdf`);
+        }
+
+        renderHistorique();
+    </script>
+</body>
+  </html>
