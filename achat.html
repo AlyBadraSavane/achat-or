@@ -3,10 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>OrGestion Pro V10.0 - Premium Cloud</title>
+    <title>OrGestion Pro V10.2</title>
 
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="manifest.json?v=100">
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/AlyaBadr/icons/main/or_logo_premium.png?v=100">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/AlyaBadr/icons/main/or_logo_premium.png?v=100">
+
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#050a15">
 
@@ -17,7 +21,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        :root { --bg: #050a15; --gold: #eab308; }
+        :root { --bg: #050a15; }
         body { 
             background-color: var(--bg);
             background: radial-gradient(circle at 50% 0%, #1e293b 0%, #050a15 100%);
@@ -30,9 +34,8 @@
             background: rgba(255, 255, 255, 0.03); 
             backdrop-filter: blur(20px); 
             border: 1px solid rgba(255,255,255,0.1); 
-            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
         }
-        #journal-container { max-height: 60vh; overflow-y: auto; padding-bottom: 20px; }
+        #journal-container { max-height: 60vh; overflow-y: auto; }
         .input-shrink { font-size: 24px; text-align: center; font-weight: 900; color: white; }
     </style>
 </head>
@@ -44,7 +47,7 @@
                 <div class="h-14 w-14 bg-yellow-500 rounded-2xl flex items-center justify-center font-black text-black text-2xl shadow-lg">O</div>
                 <div>
                     <h1 class="text-2xl font-black uppercase italic tracking-tighter">OrGestion <span class="text-yellow-500">PRO</span></h1>
-                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">V10.0 - Système de Flux Continu</p>
+                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">V10.2 - Système Certifié sans Cache</p>
                 </div>
             </div>
             <button onclick="confirmClearHistory()" class="text-[10px] font-bold text-red-400 border border-red-400/20 px-4 py-2 rounded-xl">RÉINITIALISER TOUT</button>
@@ -78,12 +81,12 @@
                             <input type="number" id="prix" placeholder="0" class="w-full bg-white/5 p-5 rounded-2xl border border-white/10 outline-none focus:border-yellow-500 input-shrink">
                         </div>
                     </div>
-                    <button onclick="saveToCloud()" class="w-full py-5 bg-yellow-500 text-black rounded-2xl font-black text-lg uppercase shadow-xl hover:opacity-90 active:scale-95 transition-all">Enregistrer au Cloud</button>
+                    <button onclick="saveToCloud()" class="w-full py-5 bg-yellow-500 text-black rounded-2xl font-black text-lg uppercase shadow-xl active:scale-95 transition-all">Enregistrer</button>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
-                    <button onclick="shareWhatsApp()" class="glass-card py-4 rounded-xl text-blue-400 font-bold text-[10px] uppercase">📱 Partager</button>
-                    <button onclick="generateGlobalBilan()" class="glass-card py-4 rounded-xl text-slate-400 font-bold text-[10px] uppercase">📄 Bilan Global</button>
+                    <button onclick="shareWhatsApp()" class="glass-card py-4 rounded-xl text-blue-400 font-bold text-[10px] uppercase">Partager</button>
+                    <button onclick="generateGlobalBilan()" class="glass-card py-4 rounded-xl text-slate-400 font-bold text-[10px] uppercase">Bilan PDF</button>
                 </div>
             </div>
 
@@ -93,9 +96,8 @@
                         <p class="text-[9px] font-bold opacity-30 uppercase ml-2 mb-1">Budget Initial</p>
                         <input type="number" id="capitalDepart" class="bg-white/5 p-4 rounded-xl text-xl font-black outline-none text-yellow-500 w-full border border-white/5" placeholder="Montant GNF...">
                     </div>
-                    <button onclick="updateBudget()" class="w-full sm:w-auto bg-white text-black px-8 py-4 rounded-xl font-black text-[10px] uppercase">Mettre à jour</button>
+                    <button onclick="updateBudget()" class="w-full sm:w-auto bg-white text-black px-8 py-4 rounded-xl font-black text-[10px] uppercase">Modifier</button>
                 </div>
-
                 <div id="journal-container">
                     <div id="journal" class="space-y-3"></div>
                 </div>
@@ -104,7 +106,6 @@
     </div>
 
     <script>
-        // Ta configuration Firebase spécifique
         const firebaseConfig = {
             apiKey: "AIzaSyBehXJCKBiigdB9FKr44RnRA4TpNgd8vPU",
             authDomain: "orgestion.firebaseapp.com",
@@ -119,10 +120,8 @@
         const db = firebase.database();
         const fGNF = (n) => new Intl.NumberFormat('fr-FR').format(n).replace(/\s/g, ' ') + " GNF";
 
-        let capInitial = 0;
-        let invTotal = 0;
+        let capInitial = 0; let invTotal = 0;
 
-        // Ecouteurs Temps Réel
         db.ref('config/capitalInitial').on('value', (snap) => {
             capInitial = snap.val() || 0;
             document.getElementById('capitalDepart').value = capInitial;
@@ -161,63 +160,39 @@
             const data = window.lastData;
             const container = document.getElementById('journal');
             let weight = 0, spent = 0, html = '';
-            
             if (data) {
                 Object.keys(data).reverse().forEach(key => {
                     const t = data[key];
                     weight += t.poids; spent += t.total;
-                    html += `
-                        <div class="glass-card p-5 rounded-2xl flex justify-between items-center border-l-4 border-yellow-500">
-                            <div><span class="font-black text-xl text-white">${t.poids}g</span><p class="text-[9px] opacity-40 uppercase font-bold">${t.date}</p></div>
-                            <div class="text-right">
-                                <div class="font-bold text-sm text-yellow-500">${fGNF(t.total)}</div>
-                                <button onclick="generateSinglePDF('${key}')" class="text-[8px] font-black uppercase text-blue-400 mt-2 border border-blue-400/20 px-2 py-1 rounded-md">Reçu PDF</button>
-                            </div>
-                        </div>`;
+                    html += `<div class="glass-card p-5 rounded-2xl flex justify-between items-center border-l-4 border-yellow-500">
+                        <div><span class="font-black text-xl text-white">${t.poids}g</span><p class="text-[9px] opacity-40 uppercase font-bold">${t.date}</p></div>
+                        <div class="text-right">
+                            <div class="font-bold text-sm text-yellow-500">${fGNF(t.total)}</div>
+                            <button onclick="generateSinglePDF('${key}')" class="text-[8px] font-black uppercase text-blue-400 mt-2 border border-blue-400/20 px-2 py-1 rounded-md">PDF</button>
+                        </div>
+                    </div>`;
                 });
                 invTotal = spent;
                 document.getElementById('totalPoids').innerText = weight.toFixed(2);
                 document.getElementById('totalInvesti').innerText = fGNF(spent);
                 updateBalanceUI();
                 container.innerHTML = html;
-            } else {
-                invTotal = 0; updateBalanceUI();
-                container.innerHTML = '<div class="py-20 text-center opacity-20 font-black tracking-widest uppercase">Aucune donnée</div>';
             }
         }
 
-        // --- GÉNÉRATION PDF AVEC NOM UNIQUE ---
+        // PDF AVEC NOM UNIQUE (HEURES + MINUTES + SECONDES)
         function generateSinglePDF(key) {
             const t = window.lastData[key];
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            const format = (n) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-            
             const maintenant = new Date();
-            const dateFull = maintenant.toLocaleString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
             
             doc.setFillColor(5, 10, 21); doc.rect(0, 0, 210, 297, 'F');
-            doc.setFillColor(15, 23, 42); doc.rect(0, 0, 210, 60, 'F'); 
-            doc.setFillColor(234, 179, 8); doc.rect(0, 0, 210, 2, 'F');
+            doc.setTextColor(234, 179, 8); doc.setFontSize(22); doc.text("ORGESTION PRO", 20, 30);
+            doc.setTextColor(255, 255, 255);
+            doc.text(`Transaction: ${t.poids}g`, 20, 60);
+            doc.text(`Total: ${fGNF(t.total)}`, 20, 70);
 
-            doc.setTextColor(234, 179, 8); doc.setFontSize(22); doc.setFont("helvetica", "bold");
-            doc.text("ORGESTION PRO", 20, 30);
-            doc.setTextColor(100, 116, 139); doc.setFontSize(9); doc.text("REÇU DE TRANSACTION NUMÉRIQUE", 20, 40);
-            doc.text(`ID: #OR-${key.slice(-6).toUpperCase()}`, 150, 40);
-
-            doc.setFillColor(255, 255, 255, 0.03); doc.roundedRect(15, 70, 180, 100, 5, 5, 'F');
-            doc.setTextColor(234, 179, 8); doc.setFontSize(10); doc.text("DÉTAILS DE L'ACHAT", 25, 85);
-            
-            doc.setTextColor(255, 255, 255); doc.setFontSize(12);
-            doc.text("Poids net :", 25, 105); doc.text(`${t.poids} grammes`, 130, 105);
-            doc.text("Prix au gramme :", 25, 115); doc.text(`${format(t.prix)} GNF`, 130, 115);
-            doc.text("Date d'édition :", 25, 125); doc.text(`${dateFull}`, 130, 125);
-
-            doc.setFillColor(234, 179, 8); doc.roundedRect(15, 180, 180, 45, 5, 5, 'F');
-            doc.setTextColor(5, 10, 21); doc.setFontSize(11); doc.text("TOTAL TRANSACTION", 25, 195);
-            doc.setFontSize(32); doc.text(`${format(t.total)} GNF`, 25, 215);
-
-            // NOM UNIQUE POUR ÉVITER LE MESSAGE "TÉLÉCHARGER DE NOUVEAU"
             const uniqueName = `Recu_${maintenant.getHours()}h${maintenant.getMinutes()}m${maintenant.getSeconds()}s.pdf`;
             doc.save(uniqueName);
         }
@@ -226,37 +201,16 @@
             if (!window.lastData) return;
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            const format = (n) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-            
             const maintenant = new Date();
-            const dateBilan = maintenant.toLocaleString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-            let totalW = 0, totalI = 0;
-            Object.values(window.lastData).forEach(t => { totalW += t.poids; totalI += t.total; });
-
+            
             doc.setFillColor(5, 10, 21); doc.rect(0, 0, 210, 297, 'F');
-            doc.setTextColor(234, 179, 8); doc.setFontSize(24); doc.text("RAPPORT GLOBAL DE SITUATION", 20, 35);
-            doc.setTextColor(255, 255, 255, 0.5); doc.setFontSize(10);
-            doc.text(`Édité le : ${dateBilan}`, 20, 45);
+            doc.setTextColor(234, 179, 8); doc.text("BILAN COMPLET", 20, 40);
+            doc.setTextColor(255, 255, 255);
+            doc.text(`Stock Total: ${document.getElementById('totalPoids').innerText}g`, 20, 70);
+            doc.text(`Investi: ${document.getElementById('totalInvesti').innerText}`, 20, 80);
 
-            doc.setFillColor(255, 255, 255, 0.04); doc.roundedRect(15, 65, 85, 50, 4, 4, 'F');
-            doc.setTextColor(234, 179, 8); doc.text("STOCK PHYSIQUE", 25, 78);
-            doc.setTextColor(255, 255, 255); doc.setFontSize(18); doc.text(`${totalW.toFixed(2)} g`, 25, 95);
-
-            doc.setFillColor(255, 255, 255, 0.04); doc.roundedRect(110, 65, 85, 50, 4, 4, 'F');
-            doc.setTextColor(234, 179, 8); doc.text("VALEUR INVESTIE", 120, 78);
-            doc.setTextColor(255, 255, 255); doc.text(`${format(totalI)} GNF`, 120, 95);
-
-            doc.setFillColor(255, 255, 255, 0.04); doc.roundedRect(15, 130, 180, 70, 5, 5, 'F');
-            doc.setTextColor(234, 179, 8); doc.text("ANALYSE DU CAPITAL", 25, 145);
-            doc.setTextColor(255, 255, 255); doc.setFontSize(12);
-            doc.text("Budget Initial :", 25, 165); doc.text(`${format(capInitial)} GNF`, 130, 165);
-            doc.text("Solde Restant :", 25, 185); 
-            doc.setTextColor(52, 211, 153); doc.setFontSize(18); doc.text(`${format(capInitial - totalI)} GNF`, 130, 185);
-
-            // NOM UNIQUE POUR LE BILAN (Format : Bilan_26-4_11h45.pdf)
             const dateStr = `${maintenant.getDate()}-${maintenant.getMonth()+1}_${maintenant.getHours()}h${maintenant.getMinutes()}s`;
-            doc.save(`Bilan_Pro_${dateStr}.pdf`);
+            doc.save(`Bilan_Global_${dateStr}.pdf`);
         }
 
         function shareWhatsApp() {
@@ -271,4 +225,4 @@
         }
     </script>
 </body>
-    </html>
+                                </html>
